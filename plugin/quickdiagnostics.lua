@@ -54,20 +54,22 @@ vim.api.nvim_create_autocmd("QuickFixCmdPost", {
         local diagnostics_by_buffer = {}
 
         for _, item in ipairs(vim.fn.getqflist()) do
-            if item.valid == 1 and item.bufnr > 0 then
-                local lnum = math.max(0, item.lnum - 1)
-                local col = math.max(0, item.col - 1)
-                diagnostics_by_buffer[item.bufnr] = diagnostics_by_buffer[item.bufnr] or {}
-                table.insert(diagnostics_by_buffer[item.bufnr], {
-                    lnum = lnum,
-                    col = col,
-                    end_lnum = item.end_lnum > 0 and item.end_lnum - 1 or lnum,
-                    end_col = end_col_for(item, lnum, col),
-                    severity = severities[item.type:upper()] or vim.diagnostic.severity.INFO,
-                    message = item.text,
-                    source = "quickfixdiagnostics",
-                })
-            end
+            if item.valid ~= 1 then goto continue end
+            if item.bufnr <= 0 then goto continue end
+
+            local lnum = math.max(0, item.lnum - 1)
+            local col = math.max(0, item.col - 1)
+            diagnostics_by_buffer[item.bufnr] = diagnostics_by_buffer[item.bufnr] or {}
+            table.insert(diagnostics_by_buffer[item.bufnr], {
+                lnum = lnum,
+                col = col,
+                end_lnum = item.end_lnum > 0 and item.end_lnum - 1 or lnum,
+                end_col = end_col_for(item, lnum, col),
+                severity = severities[item.type:upper()] or vim.diagnostic.severity.INFO,
+                message = item.text,
+                source = "quickfixdiagnostics",
+            })
+            ::continue::
         end
 
         vim.diagnostic.reset(namespace)
