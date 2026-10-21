@@ -9,7 +9,6 @@ cqfd:
 test tests:
 	@cog check --from-latest-tag
 	@-./scripts/run_tests
-	@./scripts/print_cloc
 
 .PHONY: demo
 demo:
