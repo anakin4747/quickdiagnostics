@@ -91,6 +91,65 @@ describe("quickdiagnostics", function()
             assert.are.equal(3, diagnostics[1].end_col)
         end)
 
+        describe("without end_col", function()
+            local source_path
+
+            before_each(function()
+                source_path = tmpdir .. "/source.c"
+                vim.fn.writefile({
+                    "int main(void)",
+                    "{",
+                    "    return undeclared_variable;",
+                    "}",
+                }, source_path)
+            end)
+
+            it("extends end_col to the end of the word at col", function()
+                run_make({ source_path .. ":3:12: error: undeclared" })
+                local diagnostics = vim.diagnostic.get(vim.fn.bufadd(source_path))
+                assert.are.equal(2, diagnostics[1].lnum)
+                assert.are.equal(11, diagnostics[1].col)
+                assert.are.equal(2, diagnostics[1].end_lnum)
+                assert.are.equal(30, diagnostics[1].end_col)
+            end)
+
+            it("extends end_col when col is in the middle of the word", function()
+                run_make({ source_path .. ":3:20: error: undeclared" })
+                local diagnostics = vim.diagnostic.get(vim.fn.bufadd(source_path))
+                assert.are.equal(19, diagnostics[1].col)
+                assert.are.equal(30, diagnostics[1].end_col)
+            end)
+
+            it("extends end_col using a loaded buffer's contents", function()
+                local bufnr = vim.fn.bufadd(source_path)
+                vim.fn.bufload(bufnr)
+                run_make({ source_path .. ":3:12: error: undeclared" })
+                assert.are.equal(30, vim.diagnostic.get(bufnr)[1].end_col)
+            end)
+
+            it("keeps end_col equal to col when no word is at col", function()
+                run_make({ source_path .. ":3:31: error: expected something" })
+                local diagnostics = vim.diagnostic.get(vim.fn.bufadd(source_path))
+                assert.are.equal(30, diagnostics[1].col)
+                assert.are.equal(30, diagnostics[1].end_col)
+            end)
+
+            it("keeps end_col equal to col when col is unknown", function()
+                vim.o.errorformat = [[%f:%l:\ %m]]
+                run_make({ source_path .. ":3: no column" })
+                local diagnostics = vim.diagnostic.get(vim.fn.bufadd(source_path))
+                assert.are.equal(0, diagnostics[1].col)
+                assert.are.equal(0, diagnostics[1].end_col)
+            end)
+
+            it("keeps end_col equal to col when the line does not exist", function()
+                run_make({ source_path .. ":99:3: error: past the end" })
+                local diagnostics = vim.diagnostic.get(vim.fn.bufadd(source_path))
+                assert.are.equal(2, diagnostics[1].col)
+                assert.are.equal(2, diagnostics[1].end_col)
+            end)
+        end)
+
         it("uses the entry text as the message", function()
             run_make({ a_path .. ":1:1: error: something broke" })
             assert.are.equal("something broke", vim.diagnostic.get(vim.fn.bufadd(a_path))[1].message)
